@@ -20,9 +20,44 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // 응답에 _links(자기 자신 연관 리소스로 가는 링크)를 붙여주는 hateoas 라이브러리
+    implementation 'org.springframework.boot:spring-boot-starter-hateoas'
+
+    // Spring AOP @Aspect / @Around 로 횡단 관심사 (로깅 실행 시간) 분리
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
+    // JPA(표준)위에 추상화 객체를 얹어서 JPA를 좀 더 편하게 사용할 수 있는 라이브러리
+    // 구현체 Hibernate가 포홤되어 있다.
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // Actuator - 애플리케이션 모니터링(상태, 정보, 지표)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // [신규] Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    //Spring과 PostgreSQL을 연동할 수 있는 드라이버
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // 테스트 코드에서도 Lombok 사용
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // H2 인메모리 데이터베이스(테스트 전용 DB)
+    // 테스트는 빠르고 독립적으로 돌아야 하므로 가벼운 인메모리 H2를 사용, 개발 및 운영은 postgres 사용
+    testRuntimeOnly 'com.h2database:h2'
+
+
+    // Swagger/OpenAPI 추가
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
+
+    // 쿼리 파라미터 추가 외부 로그 남기기 (콘솔에서 sql 자세히 보기)
+    implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.0'
 }
 
 tasks.named('test') {

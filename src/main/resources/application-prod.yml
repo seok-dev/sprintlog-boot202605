@@ -1,0 +1,20 @@
+sprintlog:
+  welcome-message: "SprintLog Boot - PRODUCTION 환경 (운영 환경)"
+  sample-data:
+    enabled: false
+    count: 4
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sprintlog
+    username: sprintlog
+    password: sprintlog
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    com.sprintlog: warn
