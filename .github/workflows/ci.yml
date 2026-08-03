@@ -4,9 +4,9 @@ name: ci
 # - 트리거: 언제 이 워크플로가 도는가?
 on:
   push:
-    branches: [ "main" ] # main에 push되면
+    branches: [ "master" ] # main에 push되면
   pull_request:
-    branches: [ "main" ] # main에 PR이 열리면
+    branches: [ "master" ] # main에 PR이 열리면
   workflow_dispatch: # 수동 실행 버튼 (Action 탭에서 직접)
 
 jobs:
