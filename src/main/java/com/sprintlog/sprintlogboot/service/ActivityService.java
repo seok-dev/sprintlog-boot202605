@@ -31,6 +31,7 @@ public class ActivityService {
     private final ActivityRepository repository;
     private final AuditLogRepository auditLogRepository;
     private final AuditService auditService;
+    private final FileStorage fileStorage;
 
     // 지표 수집기(Micrometer) - 커스텀 지표를 여기에 등록 후 증감시킨다.
     private final MeterRegistry meterRegistry;
@@ -136,11 +137,14 @@ public class ActivityService {
 
     @Transactional
     public void delete(Long id) {
-        // 해당 id에 대한 데이터 존재 여부 확인
-        if (!repository.existsById(id)) {
-            throw new ActivityNotFoundException(id);
-        }
+        // 첨부파일명을 확보해야 합니다.
+        LearningActivity activity = repository.findById(id)
+                .orElseThrow(() -> new ActivityNotFoundException(id));
+        String storedName = activity.getAttachmentFileName();
+
         repository.deleteById(id);
+
+        fileStorage.deleteFile(storedName);
         log.info("활동 삭제 완료 id={}", id);
     }
 

@@ -1,20 +1,35 @@
+# 운영 환경 추가 설정: 컨테이너/클라우드 배포용 외부 설정
+#${환경변수:기본값} 환경변수가 있음면 그 값, 없으면 콜론 뒤의 기본값
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/sprintlog} # db : 컨테이너를 같은 네트워크로 묶고, db 컨테이너 이름을 db로 지을예정
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:secret}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10 # (CPU 코어 수 x 2) + 유효 디스크 수
+      connection-timeout: 10000 # 풀에서 커넥션을 가져오는 데 걸리는 최대 대기 시간: 10초
+      max-lifetime: 1740000 # 커넥션 객체의 최대 수명을 지정: 29분
+      keepalive-time: 300000 # 풀 안에서 놀고있는(유휴) 커넥션에게 주기적으로 health check를 보내는 간격
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate} # 운영 환경에서는 validate 추천.
+
 sprintlog:
   welcome-message: "SprintLog Boot - PRODUCTION 환경 (운영 환경)"
   sample-data:
     enabled: false
     count: 4
+  file-directory: ${SPRINTLOG_FILE_DIR:/app/uploads}
 
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/sprintlog
-    username: sprintlog
-    password: sprintlog
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
+  storage: ${SPRINTLOG_STORAGE:s3}
+  s3:
+    bucket: ${SPRINTLOG_S3_BUCKET::sprintlog-uploads-8180}
+    region: ${AWS_REGION:ap-northeast-2}
+    endpoint: ${SPRINTLOG_S3_ENDPOINT:}
+    presign-minutes: ${SPRINTLOG_s3_PRESIGN_MINUTES:5}
 
 logging:
   level:
+    root: info
     com.sprintlog: warn

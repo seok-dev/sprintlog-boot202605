@@ -1,0 +1,79 @@
+
+# SprintLog 앱 + PostgreSQL을 한번에 + 네트워크 설정과 볼륨 설정까지 모두 한 파일에 작성합니다.
+version: '3.8' #Docker compose 파일 형식의 버전. 대부분 3.8을 많이 사용
+services: # 실행할 여러 컨테이너들을 정의
+
+  # PostgreSQL 데이터베이스
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sprintlog"]
+      interval: 10s # 10초 마다 체크
+      timeout: 3s # 3초 안에 응답 없으면 unhealth
+      retries: 10 # 10번 실패하면 unhealth 판정 내리겠다.
+    networks:
+      - app-network
+
+  #SprintLog 어플리케이션
+  app:
+    build:
+      context: . # 현재 경로에서 빌드하겠다.
+      dockerfile: Dockerfile # 도커파일의 이름 정의
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - JPA_DDL_AUTO=${JPA_DDL_AUTO}
+      - JAVA_OPTS=-Xmx400m -Xms200m
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started # db가 health check를 통화할 때 까지 대기
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 100mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
+
+# 볼륨 정의
+volumes:
+  pgdata:
+    driver: local # 볼륨 데이터를 호스트의 로컬에 저장하겠다.
+  redis-data:
+    driver: local
+
+# 네트워크 정의
+networks:
+  app-network:
+    driver: bridge
+
+
+
+
+
+
+
+
+

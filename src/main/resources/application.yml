@@ -5,7 +5,7 @@ spring:
     name: sprintlog-boot
 
   profiles:
-    active: dev
+    active: prod
 
   servlet:
     multipart:
@@ -50,3 +50,10 @@ sprintlog:
     enabled: true
     count: 4
   file-directory: /Users/park/Desktop/codeit-13th-develop/spring-upload
+
+
+
+
+
+
+
