@@ -6,6 +6,7 @@ import com.sprintlog.sprintlogboot.domain.Visibility;
 import com.sprintlog.sprintlogboot.dto.request.CreateActivityRequest;
 import com.sprintlog.sprintlogboot.repository.ActivityRepository;
 import com.sprintlog.sprintlogboot.repository.AuditLogRepository;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,20 +14,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
-// 서비스 계층의 통합 테스트 (컨트롤러는 포함되지 않는다.)
-@SpringBootTest
-@ActiveProfiles("test")
+// 서비스 계층의 통합 테스트 (컨트롤러는 포함되지 않습니다.)
+@SpringBootTest // Spring의 모든 빈을 등록하여 컨테이너에 세팅
+@ActiveProfiles("test") // 테스트 실행 시 프로필 active를 test로 -> test.yml을 활성화 시키겠다.
 @DisplayName("ActivityService 통합 테스트")
 public class ActivityServiceIntegrationTest {
 
-    @Autowired ActivityService service;
-
-    @Autowired ActivityRepository activityRepository;
-
-    @Autowired AuditLogRepository auditLogRepository;
+    @Autowired
+    ActivityService service;
+    @Autowired
+    ActivityRepository activityRepository;
+    @Autowired
+    AuditLogRepository auditLogRepository;
 
     @BeforeEach
     void clean() {
@@ -81,7 +82,7 @@ public class ActivityServiceIntegrationTest {
     }
 
     // 전파(REQUIRES_NEW) — 오직 통합 테스트만 검증할 수 있는 것. 가짜(Mockito)로는 트랜잭션 프록시가
-    //   없어 이 동작이 아예 재현되지 않는다. "본 작업은 실패해도 '시도했다는 기록'은 남아야 한다" 는 감사 로그의 전형.
+    // 없어 이 동작이 아예 재현되지 않는다. "본 작업은 실패해도 '시도했다는 기록'은 남아야 한다" 는 감사 로그의 전형.
     @Test
     @DisplayName("전파(REQUIRES_NEW) — 활동은 롤백돼도 '시도 이력'은 남는다")
     void 전파_활동은_롤백_시도이력은_남음() {
@@ -95,5 +96,6 @@ public class ActivityServiceIntegrationTest {
         assertThat(activityRepository.count()).isEqualTo(activitiesBefore);      // 활동은 롤백(변화 없음)
         assertThat(auditLogRepository.count()).isEqualTo(logsBefore + 1);        // 시도 이력은 남음(독립 트랜잭션)
     }
+
 
 }

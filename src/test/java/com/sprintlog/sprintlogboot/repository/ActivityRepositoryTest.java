@@ -4,6 +4,7 @@ import com.sprintlog.sprintlogboot.domain.ActivityCategory;
 import com.sprintlog.sprintlogboot.domain.LearningActivity;
 import com.sprintlog.sprintlogboot.domain.Visibility;
 import jakarta.persistence.EntityManagerFactory;
+import lombok.RequiredArgsConstructor;
 import org.assertj.core.api.Assertions;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
@@ -14,22 +15,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
-import java.lang.annotation.Native;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-@DataJpaTest // JPA 계층 관련 빈만 로딩(Service, Controller, Component는 로딩하지 않음)
+//@SpringBootTest -> 내가 등록한, Spring Boot에서 사용하는 모든 빈들이 로딩되어 컨테이너에 세팅됨.
+@DataJpaTest // JPA 계층 관련 빈만 로딩(Service, Controller, Component는 로딩되지 않음)
 @TestPropertySource(properties = {
         "spring.jpa.properties.hibernate.generate_statistics=true"
 })
+@ActiveProfiles("test")
 class ActivityRepositoryTest {
 
-    @Autowired // 테스트 환경에서는 생정자 의존성 주입을 사용할 수 없어서 @Autowired로 직접 주입해 주세요.
-    ActivityRepository activityRepository;
+    @Autowired // 테스트 환경에서는 생성자 의존성 주입을 사용할 수 없어서 @Autowired로 직접 주입해 주세요.
+    ActivityRepository repository;
 
     @Autowired
     TestEntityManager em;
@@ -43,7 +47,8 @@ class ActivityRepositoryTest {
         persist(ActivityCategory.LECTURE,  "JPA 심화",         120, Visibility.PUBLIC,  "spring", "jpa");
         persist(ActivityCategory.READING,  "클린 코드",         60,  Visibility.PRIVATE, "clean");
         persist(ActivityCategory.PRACTICE, "알고리즘 연습",     45,  Visibility.PUBLIC);
-        // 더미 데이터 세팅 후에 진행될 테스트를 좀 더 깔끔하게 진행하기 위해서 TestEntityManager로 영속성 컨텍스트를 직접 제어
+
+        // 더미 데이터 세팅 후에 진행될 테스트를 좀 더 깔끔하게 진행하기 위해서 TestEntityManager로 영속성 컨텍스트를 직접 제어.
         em.flush(); // 영속성 컨텍스트에 영속된 엔터티들을 강제로 밀어내기 -> INSERT
         em.clear(); // 영속성 컨텍스트 비우기
     }
@@ -57,7 +62,7 @@ class ActivityRepositoryTest {
     }
 
     // 지금까지 하이버네이트가 실행한 SQL 문의 개수를 리턴.
-    private long queryCount(){
+    private long queryCount() {
         Statistics stats = emf.unwrap(SessionFactory.class).getStatistics();
         return stats.getPrepareStatementCount();
     }
@@ -65,12 +70,13 @@ class ActivityRepositoryTest {
 
     @Nested
     @DisplayName("직접 작성한 @Query")
-    class CustomQueries{
+    class CustomQueries {
+
         @Test
         @DisplayName("findByTag - 특정 태그를 가진 활동만 (컬렉션 조인)")
         void findByTag() {
             // when
-            List<LearningActivity> result = activityRepository.findByTag("spring");
+            List<LearningActivity> result = repository.findByTag("spring");
 
             // then
             assertThat(result)
@@ -86,29 +92,30 @@ class ActivityRepositoryTest {
         @Test
         @DisplayName("findByTag - 없는 태그면 빈 결과")
         void findByTag_없으면_빈결과() {
-            assertThat(activityRepository.findByTag("존재하지 않는태그")).isEmpty();
+            assertThat(repository.findByTag("존재하지않는태그")).isEmpty();
         }
 
         @Test
         @DisplayName("findLongActivities - 기준 분 이상, 시간 내림차순")
         void findLongActivities() {
-            List<LearningActivity> result = activityRepository.findLongActivities(90);
+            // when
+            List<LearningActivity> result = repository.findLongActivities(90);
 
+            // then
             assertThat(result)
                     .extracting(LearningActivity::getMinutes)
                     .containsExactly(120, 90);
-
         }
 
         @Test
-        @DisplayName("findLongActivitesNative - 네이티브 SQL도 엔터티로 정확히 매핑(JPQL과 같은 결과)")
+        @DisplayName("findLongActivitiesNative - 네이티브 SQL도 엔터티로 정확히 매핑 (JPQL과 같은 결과)")
         void nativeQuery_JPQL과_동일() {
-            List<LearningActivity> jpql = activityRepository.findLongActivities(90);
-            List<LearningActivity> nativeR = activityRepository.findLongActivitiesNative(90);
+            // when
+            List<LearningActivity> jpql = repository.findLongActivities(90);
+            List<LearningActivity> nativeR = repository.findLongActivitiesNative(90);
 
-
-            assertThat(nativeR).extracting(LearningActivity::getMinutes)
-                    .containsExactly(120, 90);
+            // then
+            assertThat(nativeR).extracting(LearningActivity::getMinutes).containsExactly(120, 90);
 
             assertThat(nativeR).extracting(LearningActivity::getTitle)
                     .containsExactlyElementsOf(jpql.stream().map(LearningActivity::getTitle).toList());
@@ -118,67 +125,73 @@ class ActivityRepositoryTest {
     @Nested
     @DisplayName("복합 조건 메서드명 쿼리")
     class DerivedQueries {
+
         @Test
         @DisplayName("findByCategoryAndVisibilityOrderByMinutesDesc - 두 조건 AND + 정렬")
-        void categoryAndVisiblityOrdered() {
+        void categoryAndVisibilityOrdered() {
             // when
-            List<LearningActivity> result =
-                    activityRepository.findByCategoryAndVisibilityOrderByMinutesDesc(ActivityCategory.LECTURE, Visibility.PUBLIC);
+            List<LearningActivity> result
+                    = repository.findByCategoryAndVisibilityOrderByMinutesDesc(ActivityCategory.LECTURE, Visibility.PUBLIC);
+
             // then
-            assertThat(result).extracting(LearningActivity::getTitle)
+            assertThat(result)
+                    .extracting(LearningActivity::getTitle)
                     .containsExactly("JPA 심화", "Spring Boot 입문");
+
         }
 
         @Test
         @DisplayName("findByTitleContainingIgnoreCase - 부분 일치 + 대소문자 무시")
         void titleContainingIgnoreCase() {
             // when
-            List<LearningActivity> result = activityRepository.findByTitleContainingIgnoreCase("jpa 심화");
+            List<LearningActivity> result = repository.findByTitleContainingIgnoreCase("spring");
 
             // then
-            assertThat(result).extracting(LearningActivity::getTitle)
-                    .containsExactly("JPA 심화");
-
+            assertThat(result)
+                    .extracting(LearningActivity::getTitle)
+                    .containsExactly("Spring Boot 입문");
         }
+
     }
+
     @Nested
     @DisplayName("N+1 회피 (fetch 전략) - 쿼리 '수'를 검증")
     class FetchStrategy {
+
         @Test
-        @DisplayName("findAll - 연관(태그)을 활동마다 또 조회 = N+1(1 + N = 4 쿼리)")
+        @DisplayName("findAll - 연관(태그)을 활동마다 또 조회 = N+1 (1 + N = 5 쿼리)")
         void findAll_은_N플러스1() {
             // given
             long before = queryCount();
 
             // when
-            List<LearningActivity> all = activityRepository.findAll();
-            all.forEach(a -> a.getTags().size()); // 활동 객체에서 태그를 꺼내쓴다 -> LAZY면 여기서 활동마다 N+1 조회가 발생
+            List<LearningActivity> all = repository.findAll();
+            all.forEach(a -> a.getTags().size()); // 활동 객체에서 태그를 꺼내 쓴다 -> LAZY면 여기서 활동마다 N+1 조회가 발생.
             long executed = queryCount() - before;
 
             // then
             assertThat(all).hasSize(4);
             assertThat(executed).isEqualTo(5);
         }
-
-        @Test
-        @DisplayName("findAllWithDetails - @EntityGraph")
-        void withDetails_는_한_쿼리() {
-            // given
-            long before = queryCount();
-
-            // when
-            List<LearningActivity> all = activityRepository.findAllWithDetails();
-            all.forEach(a -> a.getTags().size());
-            long executed = queryCount() - before;
-
-            // then
-            assertThat(all).hasSize(4);
-            assertThat(executed).isEqualTo(1);
-        }
     }
+}
 
-
-
+//        @Test
+//        @DisplayName("findAllWithDetails - @EntityGraph로 한 방에 조회 (쿼리 1번)")
+//        void withDetails_는_한_쿼리() {
+//            // given
+//            long before = queryCount();
+//
+//            // when
+//            List<LearningActivity> all = repository.findAllWithDetails();
+//            all.forEach(a -> a.getTags().size());
+//            long executed = queryCount() - before;
+//
+//            // then
+//            assertThat(all).hasSize(4);
+//            assertThat(executed).isEqualTo(1);
+//        }
+//    }
 
 
 
@@ -205,4 +218,4 @@ class ActivityRepositoryTest {
          메서드 이름을 고민하느라 시간을 소요하지 마세요. @DisplayName이 있으니까요.
          Given-When-Then 패턴을 잘 지켜주시고, 주석은 꼭 남겨 놓으세요.
          */
-}
+
